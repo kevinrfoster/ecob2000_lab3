@@ -64,7 +64,7 @@ of code to get the data to all be in the (0,1) interval.
 
 ``` r
 norm_varb <- function(X_in) {
-  (max(X_in, na.rm = TRUE) - X_in)/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE) )
+  (X_in - min(X_in, na.rm = TRUE))/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE) )
 }
 ```
 

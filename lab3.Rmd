@@ -40,7 +40,7 @@ Here is some code to get you started. Best to normalize -- here is a bit of code
 
 ```{r eval = FALSE}
 norm_varb <- function(X_in) {
-  (max(X_in, na.rm = TRUE) - X_in)/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE) )
+  (X_in - min(X_in, na.rm = TRUE))/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE) )
 }
 ```
 
