@@ -1,26 +1,11 @@
 Lab 3
 ================
 
-<img src="https://mk0labs2lovei6j157sd.kinstacdn.com/wp-content/uploads/2014/03/ChocolateYellowBrownLabs_2880x1000px-e1508873405125.jpg" width="100px" />
+### Econ B2000, MA Econometrics
 
-<p style="color:rgb(182,18,27);font-family:corbel">
+### Kevin R Foster, the Colin Powell School at the City College of New York, CUNY
 
-Econ B2000, MA Econometrics
-
-</p>
-
-<p style="color:rgb(182,18,27);font-family:corbel">
-
-Kevin R Foster, the Colin Powell School at the City College of New York,
-CUNY
-
-</p>
-
-<p style="color:rgb(182,18,27);font-family:corbel">
-
-Fall 2020
-
-</p>
+### Fall 2021
 
 For this lab, we will use simple k-nn techniques of machine learning to
 try to guess people’s neighborhoods. Knn is a fancy name for a really
@@ -30,10 +15,14 @@ simple procedure:
   - look for classified observations near it
   - guess that it is like its neighbors
 
-We’ll zoom into groups. You get the rest of the class to prepare and
-will write up results in homework. I had posted the 20-min lecture
-already but don’t worry if you haven’t watched that yet or read the
-notes, you can do that over the week ahead.
+We can understand the k-nn method without any statistics more
+complicated than means (of subgroups) and standard deviations.
+
+We will compare this k-nn technique with a simple OLS regression.
+
+We’ll split into groups. You get the rest of the class to prepare and
+will write up results in homework. I had posted a video of the lecture
+already.
 
 The idea here is to try to classify people into neighborhood. You’ve
 probably done this in your ordinary life: meet someone and guess what
@@ -43,7 +32,8 @@ PUMS data again.
 Start with looking at the differences in means of some of the variables
 and put that together with your own knowledge of the city. You might
 want to subset the data – are you trying to predict everbody? Are young
-people easier? Retirees? College grads?
+people easier? Retirees? College grads? The work you did for Lab 2
+should come in handy now.
 
 Then use a k-nn classification. Start by just trying to predict the
 borough not the neighborhood. Create this factor:
@@ -115,10 +105,35 @@ print(c(indx,correct_rate))
 }
 ```
 
+How can we compare this against another method, for instance a simple
+linear regression?
+
+``` r
+cl_data_n <- as.numeric(cl_data)
+
+model_ols1 <- lm(cl_data_n ~ train_data$norm_inc_tot + train_data$norm_housing_cost)
+
+y_hat <- fitted.values(model_ols1)
+
+mean(y_hat[cl_data_n == 1])
+mean(y_hat[cl_data_n == 2])
+mean(y_hat[cl_data_n == 3])
+mean(y_hat[cl_data_n == 4])
+mean(y_hat[cl_data_n == 5])
+
+# maybe try classifying one at a time with OLS
+
+cl_data_n1 <- as.numeric(cl_data_n == 1)
+model_ols_v1 <- lm(cl_data_n1 ~ train_data$norm_inc_tot + train_data$norm_housing_cost)
+y_hat_v1 <- fitted.values(model_ols_v1)
+mean(y_hat_v1[cl_data_n1 == 1])
+mean(y_hat_v1[cl_data_n1 == 0])
+```
+
 Now find some other data that will do a better job of classifying. How
 good can you get it to be? At what point do you think there might be a
 tradeoff between better classifying the training data and doing worse at
 classifying the test data?
 
-Can you classify neighborhoods better? Perhaps there are some variables
-that easily classify certain neighborhoods? Try it.
+Can you classify neighborhoods better? Are certain neighborhoods easier
+to classify? Try it.
