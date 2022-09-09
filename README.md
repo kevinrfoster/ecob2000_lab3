@@ -5,35 +5,31 @@ Lab 3
 
 ### Kevin R Foster, the Colin Powell School at the City College of New York, CUNY
 
-### Fall 2021
+### Fall 2022
 
 For this lab, we will use simple k-nn techniques of machine learning to
 try to guess people’s neighborhoods. Knn is a fancy name for a really
 simple procedure:
 
-  - take an unclassified observation
-  - look for classified observations near it
-  - guess that it is like its neighbors
+-   take an unclassified observation
+-   look for classified observations near it
+-   guess that it is like its neighbors
 
 We can understand the k-nn method without any statistics more
 complicated than means (of subgroups) and standard deviations.
 
-We will compare this k-nn technique with a simple OLS regression.
-
-We’ll split into groups. You get the rest of the class to prepare and
-will write up results in homework. I had posted a video of the lecture
-already.
+We’ll split into groups. You get 75 min to prepare and then give
+preliminary results to class.
 
 The idea here is to try to classify people into neighborhood. You’ve
 probably done this in your ordinary life: meet someone and guess what
 neighborhood they live in. Here we try to train the computer, using the
-PUMS data again.
+ACS NY data.
 
 Start with looking at the differences in means of some of the variables
 and put that together with your own knowledge of the city. You might
-want to subset the data – are you trying to predict everbody? Are young
-people easier? Retirees? College grads? The work you did for Lab 2
-should come in handy now.
+want to subset the data – are you trying to predict everybody? Are young
+people easier? Retirees? College grads? Immigrants?
 
 Then use a k-nn classification. Start by just trying to predict the
 borough not the neighborhood. Create this factor:
@@ -46,11 +42,25 @@ borough_f <- factor((in_Bronx + 2*in_Manhattan + 3*in_StatenI + 4*in_Brooklyn + 
 
 What variables do we think are relevant in classifying by borough?
 **NOT** PUMA since neighborhood likely perfectly classifies… I’ll give
-an example, where I try income\_total, owner\_cost combined with
-rent\_cost. You should find other data to do better.
+an example, where I try income_total, owner_cost combined with
+rent_cost. You should find other data to do better.
 
-Here is some code to get you started. Best to normalize – here is a bit
-of code to get the data to all be in the (0,1) interval.
+Remember this “trick” – sometimes can get more accuracy classifying into
+rougher categories. For homework you can explore variations.
+
+We often **normalize** the input variables and you should be able to
+convince yourself that a formula,
+
+![\frac{(X - X\_{min})}{(X\_{max} - X\_{min})}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Cfrac%7B%28X%20-%20X_%7Bmin%7D%29%7D%7B%28X_%7Bmax%7D%20-%20X_%7Bmin%7D%29%7D "\frac{(X - X_{min})}{(X_{max} - X_{min})}")
+
+would always return a value in \[0,1\] interval. This is common in lots
+of machine learning applications, so as not to worry about different
+variables with different scales.
+
+Note that knn doesn’t like factors, it wants numbers as inputs. If you
+want to use factors, norm_varb(as.numeric(Factor1)).
+
+Here is some code to get you started.
 
 ``` r
 norm_varb <- function(X_in) {
@@ -61,7 +71,7 @@ norm_varb <- function(X_in) {
 Next, fix up the data,
 
 ``` r
-is.na(OWNCOST) <- which(OWNCOST == 9999999)
+is.na(OWNCOST) <- which(OWNCOST == 9999999) # that's how data codes NA values
 housing_cost <- OWNCOST + RENT
 norm_inc_tot <- norm_varb(INCTOT)
 norm_housing_cost <- norm_varb(housing_cost)
@@ -98,10 +108,10 @@ prop.table(summary(cl_data))
 summary(train_data)
 require(class)
 for (indx in seq(1, 9, by= 2)) {
- pred_borough <- knn(train_data, test_data, cl_data, k = indx, l = 0, prob = FALSE, use.all = TRUE)
-num_correct_labels <- sum(pred_borough == true_data)
-correct_rate <- num_correct_labels/length(true_data)
-print(c(indx,correct_rate))
+  pred_borough <- knn(train_data, test_data, cl_data, k = indx, l = 0, prob = FALSE, use.all = TRUE)
+  num_correct_labels <- sum(pred_borough == true_data)
+  correct_rate <- num_correct_labels/length(true_data)
+  print(c(indx,correct_rate))
 }
 ```
 
