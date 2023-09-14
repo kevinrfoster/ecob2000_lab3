@@ -5,86 +5,159 @@ Lab 3
 
 ### Kevin R Foster, the Colin Powell School at the City College of New York, CUNY
 
-### Fall 2022
+### Fall 2023
 
 For this lab, we will use simple k-nn techniques of machine learning to
-try to guess people’s neighborhoods. Knn is a fancy name for a really
-simple procedure:
+try to guess people’s plans to vaccinate their kids. Knn is a fancy name
+for a really simple procedure:
 
--   take an unclassified observation
--   look for classified observations near it
--   guess that it is like its neighbors
+- take an unclassified observation
+- look for classified observations near it
+- guess that it is like its neighbors
 
 We can understand the k-nn method without any statistics more
-complicated than means (of subgroups) and standard deviations.
+complicated than means (of subgroups) and standard deviations. I posted
+a video. It’s called “k-nn” since it uses the k Nearest Neighbors, where
+k is usually a small number, for instance the 3 nearest neighbors would
+be setting k=3.
 
-We’ll split into groups. You get 75 min to prepare and then give
-preliminary results to class.
+We will compare this k-nn technique with a simple OLS regression.
 
-The idea here is to try to classify people into neighborhood. You’ve
-probably done this in your ordinary life: meet someone and guess what
-neighborhood they live in. Here we try to train the computer, using the
-ACS NY data.
+Split into groups. You get the 75 min to discuss and then chat at the
+end of class (as usual, then write up results in homework).
+
+The idea here is to try to classify people’s plans to vaccinate their
+kids. You probably have some thoughts about what is important in that
+classification. Here we try to train the computer, using the HHPulse
+data again.
 
 Start with looking at the differences in means of some of the variables
-and put that together with your own knowledge of the city. You might
-want to subset the data – are you trying to predict everybody? Are young
-people easier? Retirees? College grads? Immigrants?
+and put that together with your own knowledge of the world. You will
+obviously subset the data into those with kids. We’ll start with the
+group with kids 12-17 years old. We’ll classify based on education and
+what state the person lives in. (Not making a statement of causation!
+Think about why causal arrow can go in either direction.) Some of your
+previous work should come in handy.
 
-Then use a k-nn classification. Start by just trying to predict the
-borough not the neighborhood. Create this factor:
+Then use a k-nn classification.
+
+You might experiment with other classifications whether the other kids
+age ranges or other aspects.
 
 ``` r
-dat_NYC <- subset(acs2017_ny, (acs2017_ny$in_NYC == 1)&(acs2017_ny$AGE > 20) & (acs2017_ny$AGE < 66))
-attach(dat_NYC)
-borough_f <- factor((in_Bronx + 2*in_Manhattan + 3*in_StatenI + 4*in_Brooklyn + 5*in_Queens), levels=c(1,2,3,4,5),labels = c("Bronx","Manhattan","Staten Island","Brooklyn","Queens"))
+setwd("..\\HouseholdPulse_W57")
+load("Household_Pulse_data_w57.RData")
+setwd("..\\ecob2000_lab3")
+# note your directory structures might be different so "setwd" would be different on your machine
+require(tidyverse)
+require(class)
+require(caret)
 ```
 
-What variables do we think are relevant in classifying by borough?
-**NOT** PUMA since neighborhood likely perfectly classifies… I’ll give
-an example, where I try income_total, owner_cost combined with
-rent_cost. You should find other data to do better.
+``` r
+summary(Household_Pulse_data$KIDGETVAC_12_17Y)
+```
 
-Remember this “trick” – sometimes can get more accuracy classifying into
-rougher categories. For homework you can explore variations.
+    ##                                          NA 
+    ##                                       56458 
+    ##            kids 12-17yo definitely get vaxx 
+    ##                                          27 
+    ##              kids 12-17yo probably get vaxx 
+    ##                                          76 
+    ##                unsure kids 12-17yo get vaxx 
+    ##                                         174 
+    ##          kids 12-17yo probably NOT get vaxx 
+    ##                                         425 
+    ##        kids 12-17yo definitely NOT get vaxx 
+    ##                                        1809 
+    ## do not know plans for vaxx for kids 12-17yo 
+    ##                                         321
 
-We often **normalize** the input variables and you should be able to
-convince yourself that a formula,
+Restrict to those who have kids in that age:
 
-![\frac{(X - X\_{min})}{(X\_{max} - X\_{min})}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Cfrac%7B%28X%20-%20X_%7Bmin%7D%29%7D%7B%28X_%7Bmax%7D%20-%20X_%7Bmin%7D%29%7D "\frac{(X - X_{min})}{(X_{max} - X_{min})}")
+``` r
+dat_kidvaxx_nonmissing <- subset(Household_Pulse_data, (Household_Pulse_data$KIDGETVAC_12_17Y != "NA") )
+```
 
-would always return a value in \[0,1\] interval. This is common in lots
-of machine learning applications, so as not to worry about different
-variables with different scales.
+``` r
+# always check to make sure this went right!
+summary(dat_kidvaxx_nonmissing)
+```
 
-Note that knn doesn’t like factors, it wants numbers as inputs. If you
-want to use factors, norm_varb(as.numeric(Factor1)).
+See that some households have kids in other age ranges, you should look
+at how their other decisions about vaxx are related.
+
+Next we’ll transform these from a series of answers such as “definitely
+get” or “definitely NOT get” into a numeric scale.
+
+We’ll transform “definitely yes” to be 5, “probably yes” to be 4,
+“probably no” to 2, and “definitely no” to 1. Then both “unsure” and “do
+not know plans” are coded as 3.
+
+This is obviously wrong! But might be useful. Why is it wrong? Because
+when we use numbers, there’s a distance – between 4 and 5, between 1 and
+2. In converting to numbers, we’re implicitly assuming those distances
+between answers are the same. But the distance (in the sense of how much
+would persuade a person) is likely different. The amount of information
+to get a person from “probably” to “unsure” is pretty small. While the
+amount of info to get away from “definitely” is larger. We will play
+around to see if this recode is useful, though. That’s why you see it
+done often, out in the world.
+
+Here’s the code, with the summary statements so you can examine each
+step.
+
+``` r
+temp1 <- fct_recode(dat_kidvaxx_nonmissing$KIDGETVAC_12_17Y, '5' = 'kids 12-17yo definitely get vaxx',
+                    '4'='kids 12-17yo probably get vaxx', '3'='unsure kids 12-17yo get vaxx',
+                    '2'='kids 12-17yo probably NOT get vaxx', '1'='kids 12-17yo definitely NOT get vaxx',
+                    '3'='do not know plans for vaxx for kids 12-17yo')
+summary(temp1)
+```
+
+    ##   NA    5    4    3    2    1 
+    ##    0   27   76  495  425 1809
+
+``` r
+# this converts factor to numeric, note the odd syntax,
+kidsvax1217 <- as.numeric(levels(temp1))[temp1]
+```
+
+    ## Warning: NAs introduced by coercion
+
+``` r
+summary(kidsvax1217)
+```
+
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   1.000   1.000   1.000   1.618   2.000   5.000
+
+What variables do you think are relevant in classifying whether somebody
+will get their kid(s) vaxxed against Covid? I’ll try education and
+State. You should find other data to try to do better.
 
 Here is some code to get you started.
 
 ``` r
 norm_varb <- function(X_in) {
-  (X_in - min(X_in, na.rm = TRUE))/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE) )
+  (X_in - min(X_in, na.rm = TRUE))/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE)  )
 }
-```
 
-Next, fix up the data,
+# this is a lazier way ot converting factors to numbers, uses the order of the levels
+data_use_prelim <- data.frame(norm_varb(as.numeric(dat_kidvaxx_nonmissing$EEDUC)),norm_varb(as.numeric(dat_kidvaxx_nonmissing$EST_ST)))
 
-``` r
-is.na(OWNCOST) <- which(OWNCOST == 9999999) # that's how data codes NA values
-housing_cost <- OWNCOST + RENT
-norm_inc_tot <- norm_varb(INCTOT)
-norm_housing_cost <- norm_varb(housing_cost)
-```
-
-Here we create the dataframe to use,
-
-``` r
-data_use_prelim <- data.frame(norm_inc_tot,norm_housing_cost)
-good_obs_data_use <- complete.cases(data_use_prelim,borough_f)
+good_obs_data_use <- complete.cases(data_use_prelim,dat_kidvaxx_nonmissing$KIDGETVAC_12_17Y)
 dat_use <- subset(data_use_prelim,good_obs_data_use)
-y_use <- subset(borough_f,good_obs_data_use)
+y_use <- subset(kidsvax1217,good_obs_data_use)
 ```
+
+Note that knn doesn’t like factors, it wants numbers as inputs. So the
+“State” number is also stupid; you can do better.
+
+Note that we often **normalize** the input variables and you should be
+able to convince yourself that a formula, $$
+(X - X_{min})/(X_{max} - X_{min})
+$$ does indeed output only numbers between zero and one.
 
 Next split the data into 2 parts: one part to train the algo, then the
 other part to test how well it works for new data. Here we use an 80/20
@@ -104,28 +177,29 @@ Finally run the k-nn algo and compare against the simple means,
 
 ``` r
 summary(cl_data)
-prop.table(summary(cl_data))
 summary(train_data)
-require(class)
+
 for (indx in seq(1, 9, by= 2)) {
-  pred_borough <- knn(train_data, test_data, cl_data, k = indx, l = 0, prob = FALSE, use.all = TRUE)
-  num_correct_labels <- sum(pred_borough == true_data)
-  correct_rate <- num_correct_labels/length(true_data)
-  print(c(indx,correct_rate))
+ pred_y <- knn3Train(train_data, test_data, cl_data, k = indx, l = 0, prob = FALSE, use.all = TRUE)
+ num_correct_labels <- sum(pred_y == true_data)
+ correct_rate <- num_correct_labels/length(true_data)
+ print(c(indx,correct_rate))
 }
 ```
 
 How can we compare this against another method, for instance a simple
-linear regression?
+linear regression? Here’s some code to get you started.
 
 ``` r
 cl_data_n <- as.numeric(cl_data)
+summary(as.factor(cl_data_n))
+names(train_data) <- c("norm_educ","norm_state")
 
-model_ols1 <- lm(cl_data_n ~ train_data$norm_inc_tot + train_data$norm_housing_cost)
+
+model_ols1 <- lm(cl_data_n ~ train_data$norm_educ + train_data$norm_state)
 
 y_hat <- fitted.values(model_ols1)
 
-mean(y_hat[cl_data_n == 1])
 mean(y_hat[cl_data_n == 2])
 mean(y_hat[cl_data_n == 3])
 mean(y_hat[cl_data_n == 4])
@@ -133,11 +207,14 @@ mean(y_hat[cl_data_n == 5])
 
 # maybe try classifying one at a time with OLS
 
-cl_data_n1 <- as.numeric(cl_data_n == 1)
-model_ols_v1 <- lm(cl_data_n1 ~ train_data$norm_inc_tot + train_data$norm_housing_cost)
-y_hat_v1 <- fitted.values(model_ols_v1)
-mean(y_hat_v1[cl_data_n1 == 1])
-mean(y_hat_v1[cl_data_n1 == 0])
+cl_data_n2 <- as.numeric(cl_data_n == 2) # now this is only 1 or 0, depending whether the condition is true or false
+
+model_ols_v2 <- lm(cl_data_n2 ~ train_data$norm_educ + train_data$norm_state)
+y_hat_v2 <- fitted.values(model_ols_v2)
+mean(y_hat_v2[cl_data_n2 == 1])
+mean(y_hat_v2[cl_data_n2 == 0])
+
+# can you do better?
 ```
 
 Now find some other data that will do a better job of classifying. How
@@ -145,5 +222,20 @@ good can you get it to be? At what point do you think there might be a
 tradeoff between better classifying the training data and doing worse at
 classifying the test data?
 
-Can you classify neighborhoods better? Are certain neighborhoods easier
-to classify? Try it.
+- A note on how “missing” values are coded. Note the difference here:
+
+``` r
+sum(is.na(Household_Pulse_data$KIDGETVAC_12_17Y))
+```
+
+    ## [1] 0
+
+``` r
+sum(as.numeric(Household_Pulse_data$KIDGETVAC_12_17Y == "NA"))
+```
+
+    ## [1] 56458
+
+There are costs and benefits to each approach. R is finicky about NA
+values in a way that Python is not. This particular variable has a
+“soft” NA value where that’s just another factor level.
