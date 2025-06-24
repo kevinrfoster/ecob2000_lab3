@@ -102,7 +102,7 @@ ggplot(partner_for_graph1, aes(x=Age, y = rate, colour = partner)) +
   scale_color_viridis_d(option = "inferno", end = 0.75) 
 ```
 
-![](lab3_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](unnamed-chunk-4-1.png)<!-- -->
 
 To note, I split the analysis from the graphing. Those could have been
 done in one big step but I think this is a bit easier to understand and
@@ -123,7 +123,7 @@ ggplot(partner_for_graph2, aes(x=Age, y = rate, colour = partner)) +
   scale_color_viridis_d(option = "inferno", end = 0.75) 
 ```
 
-![](lab3_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](unnamed-chunk-5-1.png)<!-- -->
 
 The good part about this is that the 2 numbers must add up to one; the
 bad part is that because of that fact, one of the lines is just
@@ -160,7 +160,7 @@ p3 <- ggplot(data = frac_partner_byState, aes(x = Age, y = freq_in_group, colour
 p3 + geom_point()
 ```
 
-![](lab3_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](unnamed-chunk-7-1.png)<!-- -->
 
 That’s a lot of dots. More space goes for the labels than for the actual
 graph, yikes! Still, it does give a bit of a sense of where are the real
