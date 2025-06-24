@@ -5,9 +5,9 @@ Homework 4 from Lab 3
 
 ### Kevin R Foster, the Colin Powell School at the City College of New York, CUNY
 
-### Fall 2024
+### Fall 2025
 
-### Due 8am EST Friday Sept 27
+### Due 8am EST Friday Sept 26
 
 ### remember to do Hawkes diagnostic test!
 
@@ -18,8 +18,7 @@ of the filename. Please write the names of your study group members at
 the beginning of your homework.*
 
 1.  What are the names of the people in your study group?
-2.  Write up the results of your k-nn lab work. Explain each step.
-    Highlight some interesting things that you discovered! Start to
-    think about the homework as not just a big dump of output but
-    instead first give curated highlights. (You can append the output
-    dump)
+2.  Write up the results of your lab work. Explain each step. Highlight
+    some interesting things that you discovered! Start to think about
+    the homework as not just a big dump of output but instead first give
+    curated highlights. (You can append the output dump)

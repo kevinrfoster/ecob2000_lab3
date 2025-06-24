@@ -5,124 +5,153 @@ output: github_document
 
 ### Econ B2000, MA Econometrics
 ### Kevin R Foster, the Colin Powell School at the City College of New York, CUNY
-### Fall 2024
+### Fall 2025
 
-For this lab, we will use simple k-nn techniques of machine learning to try to guess about whether people reported long Covid symptoms. K-nn is a fancy name for a really simple procedure:
+We'll continue with creating some graphs and statistics about partnering. This is not a class on demography so we're not doing anything deep, just using this data to learn about process.
 
-* take an unclassified observation
-* look for classified observations _near_ it
-* guess that it is like its neighbors
+Load the data, same as before -- your data is in a different place so your `setwd` commands will be different. And last time we created a new variable so do that again.
 
-We can understand the k-nn method without any statistics more complicated than means (of subgroups) and standard deviations. It's called "k-nn" since it uses the k Nearest Neighbors, where k is usually a small number, for instance the 3 nearest neighbors would be setting k=3.
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(ggplot2)
 
-We will compare this k-nn technique with simple conditional means and create some graphs to help show what's going on. Although, note, some things are just tough to predict so don't get too frustrated if your k-nn doesn't do well.
+# this would be different for you
+setwd("..")
+setwd("HPS_2020-24")
 
-Split into groups. You can discuss, start coding and then chat at the end of class (as usual, then write up results in homework). 
+load("d_HHP2020_24.Rdata")
 
-The idea here is to try to classify whether people got long Covid. You probably have some thoughts about what is important in that classification, especially after last week's look at people's decisions about vaccination. Here we try to train a model, using the HPS data again.
+setwd("..")
+setwd("ecob2000_lab3")
 
-Start with looking at the differences in means of some of the variables and put that together with your own knowledge of the world. We'll classify based on education and age. (Not making a statement of causation! Think about why causal arrow could go in either direction.) Some of your previous work should come in handy.
-
-Then use a k-nn classification.
-
-
-```{r eval = TRUE, echo=TRUE, warning=FALSE, message=FALSE}
-setwd("..\\..\\data\\Household Pulse Survey Phase4 Cycle2")
-load("Household_Pulse_data_ph4c2.RData")
-setwd("..\\..\\EcoB2000_projects\\ecob2000_lab3")
-# note your directory structures might be different so "setwd" would be different on your machine
-require(tidyverse)
-require(class)
-require(caret)
-
-# we will want to use these later
-Household_Pulse_data$Age <- 2024 - Household_Pulse_data$TBIRTH_YEAR 
-# remember topcoding, perhaps you can do a bit better to take account of that?
-
-Household_Pulse_data$Educ_years <- fct_recode(Household_Pulse_data$EEDUC,
-                                              "8" = "less than hs",
-                                              "11" = "some hs",
-                                              "12" = "HS diploma",
-                                              "13" = "some coll",
-                                              "14" = "assoc deg",
-                                              "16" = "bach deg",
-                                              "18" = "adv deg")
-
-Household_Pulse_data$Educ_years <- as.numeric(levels(Household_Pulse_data$Educ_years))[Household_Pulse_data$Educ_years]
+d_HHP2020_24$partnered <- (d_HHP2020_24$Mar_Stat == "Married") | 
+                      (d_HHP2020_24$Mar_Stat == "widowed") | 
+                      (d_HHP2020_24$Mar_Stat == "divorced") |
+                      (d_HHP2020_24$Mar_Stat == "separated")
 
 
 ```
 
-You can choose what to do with the NA values -- the data has long Covid conditional on someone answering yes to previous question about whether they had Covid. This crosstab shows that:
+Last time we got some use out of the fraction of people who are partnered by particular ages. I will pick the age 30 to 34 group to start, let's look at the fraction of people who are 30-34 in each state who are partnered.
 
-```{r eval = TRUE}
-xtabs(formula = ~HADCOVIDRV + LONGCOVID, data = Household_Pulse_data)
+```{r warning=FALSE, message=FALSE}
+
+d_HHP_Age30_34 <- d_HHP2020_24 %>% filter( ((Age >= 30) & (Age < 35)) & 
+                                             !is.na(partnered))
+
+frac_MS_byState <- d_HHP_Age30_34 %>% 
+  group_by(State, partnered) %>% 
+  summarize( n = n() ) %>% 
+  mutate(freq_in_group = n / sum(n) )
+
+```
+That compresses a lot of data but it's still a lot. Perhaps we can group together some of the states? US government statistical agencies do this already -- and there are variables that I've put into the dataset, for `Census_division` and `Region`.
+
+Here's a map, showing the 4 big divisions (Northeast, Midwest, South, and West) along with the divisions -- each region has 2 divisions except the South that has 3.
+
+![](census_regions_divisions.png){width=50%}
+
+[Full list from US Census](https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf).
+
+
+```{r warning=FALSE, message=FALSE}
+
+frac_MS_byRegion <- d_HHP_Age30_34 %>% 
+  group_by(Region, partnered) %>% 
+  summarize( n = n() ) %>% 
+  mutate(freq_in_group = n / sum(n) )
+
+```
+I'll leave it to you to do it by division.
+
+I haven't created any graphs yet, although that was what I'd started asking about. One obvious graph would be to create a map where the colors correspond to the fraction partnered. That's not a direction we'll go for now -- it's not actually hard to do, but it's not simple and would take us a bit afield.
+
+
+```{r warning=FALSE, message=FALSE}
+
+library(viridis)
+
+
+HHP_use <- d_HHP2020_24 %>% filter( Age < 88 ) # those are topcoded, so 88 means "88 and older"
+
+
+
+partner_rate_sum <- HHP_use %>% group_by(Age) %>% 
+  summarize(mar_rate = sum(Mar_Stat == "Married", na.rm = TRUE) / sum(!is.na(Mar_Stat)),
+            divwidsep_rate = sum( (Mar_Stat == "divorced") | (Mar_Stat == "separated") | (Mar_Stat == "widowed") , na.rm = TRUE) / sum(!is.na(Mar_Stat)),
+            single_rate = sum(Mar_Stat == "never", na.rm = TRUE) / sum(!is.na(Mar_Stat)),
+            number_obs = n()                                                           )
+
+
+partner_for_graph1 <- partner_rate_sum %>% 
+  select(-number_obs) %>%
+  pivot_longer(!Age, names_to = "partner", values_to = "rate")
+
+ggplot(partner_for_graph1, aes(x=Age, y = rate, colour = partner)) + 
+  geom_line(linewidth = 1) +
+  scale_color_viridis_d(option = "inferno", end = 0.75) 
+
 ```
 
+To note, I split the analysis from the graphing. Those could have been done in one big step but I think this is a bit easier to understand and poke into. (Those latter two verbs being synonyms.)
 
-Therefore restrict to those who had Covid:
-```{r eval = TRUE}
+The graph shows that the fraction who are married rises at a steady rate until around age 35, when the slope really breaks. In the next lab we'll be drawing lines so it's worth noticing.
 
-dat_hadcovid <- Household_Pulse_data %>% filter(HADCOVIDRV == "yes tested + or doc told had Covid")
+```{r warning=FALSE, message=FALSE}
+
+partner_for_graph2 <- partner_rate_sum %>% 
+  mutate(partner_rate = mar_rate + divwidsep_rate) %>%
+  select(-c("mar_rate","divwidsep_rate","number_obs")) %>%
+  pivot_longer(!Age, names_to = "partner", values_to = "rate")
+
+ggplot(partner_for_graph2, aes(x=Age, y = rate, colour = partner)) + 
+  geom_line(linewidth = 1) +
+  scale_color_viridis_d(option = "inferno", end = 0.75) 
 
 ```
 
-For now I'll leave in the NA responses but you might choose something else.
+The good part about this is that the 2 numbers must add up to one; the bad part is that because of that fact, one of the lines is just duplicate information. Which isn't necessarily wrong, sometimes a bit of duplication can be helpful. It can be a good idea to repeat yourself. (See what I did there?) But not always, YMMV.
 
-```{r eval=FALSE}
-# always check to make sure this went right!
-summary(dat_hadcovid)
+The sharp break in the slope of the line, for married, is now a bit smoother if we combine into once-or-currently partnered.
+
+If we want to put these together, how about a scatterplot with Age on the horizontal, fraction partnered on vertical, per state? 
+
+Calculate the fractions,
+
+```{r warning=FALSE, message=FALSE}
+
+d_HHP_Age20_39 <- d_HHP2020_24 %>% filter( ((Age >= 20) & (Age < 40)) & 
+                                             !is.na(partnered))
+
+frac_partner_byState <- d_HHP_Age20_39 %>% 
+  group_by(Age, State, partnered) %>% 
+  summarize( n = n() ) %>% 
+  mutate(freq_in_group = n / sum(n) )
+
+# we only need the fraction partnered
+frac_partner_byState <- frac_partner_byState %>% filter(partnered == TRUE)
+
 ```
 
-Lots of interesting changes here.
+Then graph.
 
-What variables do you think are relevant in classifying whether somebody reported that they got long Covid? I'll try education and Age. You should find other data to try to do better.
+```{r}
 
-Here is some code to get you started. 
+p3 <- ggplot(data = frac_partner_byState, aes(x = Age, y = freq_in_group, colour = State))
 
-```{r eval = TRUE}
-norm_varb <- function(X_in) {
-  (X_in - min(X_in, na.rm = TRUE))/( max(X_in, na.rm = TRUE) - min(X_in, na.rm = TRUE)  )
-}
+p3 + geom_point()
 
-data_use_prelim <- data.frame(norm_varb(dat_hadcovid$Age),norm_varb(dat_hadcovid$Educ_years))
-
-good_obs_data_use <- complete.cases(data_use_prelim,dat_hadcovid$LONGCOVID)
-dat_use <- subset(data_use_prelim,good_obs_data_use)
-y_use <- subset(dat_hadcovid$LONGCOVID,good_obs_data_use)
 ```
 
-Note that knn doesn't like factors, it wants numbers as inputs. We often **normalize** the input variables and you should be able to convince yourself that a formula,
-$$
-(X - X_{min})/(X_{max} - X_{min})
-$$
-does indeed output only numbers between zero and one.
+That's a lot of dots. More space goes for the labels than for the actual graph, yikes! Still, it does give a bit of a sense of where are the real outliers.
 
-Next split the data into 2 parts: one part to train the algo, then the other part to test how well it works for new data. Here we use an 80/20 split so 80% of the data is used to train and 20% to check how well that training worked. You can try 70/30 or 60/40 or other values.
-```{r eval = TRUE}
-set.seed(12345)
-NN_obs <- sum(good_obs_data_use == 1)
-select1 <- (runif(NN_obs) < 0.8)
-train_data <- subset(dat_use,select1)
-test_data <- subset(dat_use,(!select1))
-cl_data <- y_use[select1]
-true_data <- y_use[!select1]
-```
+You should be able to make graphs by region and division. You might try multiple plots, maybe 4 plots of each of the regions, where states are separated within each 
+region. Or division.
+
+Next try if you subdivided by particular groups: do you think people with college degrees pair up at a higher rate? (Although note that not many people under 23 or so even have a degree, so you might start from a higher age.) What about other demographic characteristics? What if you divided by gender or race or ethnicity? Try and see!
 
 
-Finally run the k-nn algo and compare against the simple means,
-```{r eval = FALSE}
-summary(cl_data)
-summary(train_data)
 
-for (indx in seq(1, 9, by= 2)) {
- pred_y <- knn3Train(train_data, test_data, cl_data, k = indx, l = 0, prob = FALSE, use.all = TRUE)
- num_correct_labels <- sum(pred_y == true_data)
- correct_rate <- num_correct_labels/length(true_data)
- print(c(indx,correct_rate))
-}
-```
 
-Now find some other data that will do a better job of classifying. How good can you get it to be? At what point do you think there might be a tradeoff between better classifying the training data and doing worse at classifying the test data? Can you show some graphs that help explain what's going on?
 
 
